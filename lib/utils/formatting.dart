@@ -19,6 +19,12 @@ String timeAgo(DateTime date, {DateTime? now}) {
   return '${local.day} ${_monthNames[local.month - 1].substring(0, 3)}';
 }
 
+/// [timeAgo] for use mid-sentence: "just now", "5 min ago", "31 Oct".
+String timeAgoInline(DateTime date, {DateTime? now}) {
+  final text = timeAgo(date, now: now);
+  return text == 'Just now' ? 'just now' : text;
+}
+
 /// "Saturday, 31 October".
 String longDate(DateTime date) {
   final local = date.toLocal();

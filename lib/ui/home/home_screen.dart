@@ -9,10 +9,36 @@ import 'package:news_app/ui/core/widgets/state_views.dart';
 import 'package:news_app/ui/home/home_view_model.dart';
 import 'package:news_app/utils/formatting.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
-  Future<void> _refresh(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  // news moves fast; refresh when the reader comes back after a while
+  static const _staleAfter = Duration(minutes: 15);
+
+  late final AppLifecycleListener _lifecycle = AppLifecycleListener(
+    onResume: () => ref
+        .read(feedViewModelProvider.notifier)
+        .refreshIfOlderThan(_staleAfter),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle; // start listening
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh() async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(feedViewModelProvider.notifier).refresh();
@@ -24,43 +50,58 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-
+  Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: maxReadingWidth + 40),
         child: RefreshIndicator(
-          onRefresh: () => _refresh(context, ref),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
+          onRefresh: _refresh,
+          child: const CustomScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverAppBar.medium(
-                title: const Text('Today'),
+                title: Text('Today'),
                 bottom: PreferredSize(
-                  preferredSize: const Size.fromHeight(24),
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                          start: 16, bottom: 8),
-                      child: Text(
-                        longDate(DateTime.now()),
-                        style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ),
-                  ),
+                  preferredSize: Size.fromHeight(24),
+                  child: _DateLine(),
                 ),
               ),
-              const SliverPersistentHeader(
+              SliverPersistentHeader(
                 pinned: true,
                 delegate: _SourceFilterHeader(),
               ),
-              const _FailedSourcesNotice(),
-              const _Feed(),
+              _FeedStatusNotice(),
+              _Feed(),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Saturday, 31 October · Updated 5 min ago"
+class _DateLine extends ConsumerWidget {
+  const _DateLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final updatedAt = ref.watch(
+        feedViewModelProvider.select((feed) => feed.valueOrNull?.updatedAt));
+    final text = [
+      longDate(DateTime.now()),
+      if (updatedAt != null) 'Updated ${timeAgoInline(updatedAt)}',
+    ].join(' · ');
+
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(start: 16, bottom: 8),
+        child: Text(
+          text,
+          style: theme.textTheme.labelLarge
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ),
     );
@@ -117,17 +158,34 @@ class _SourceChips extends ConsumerWidget {
   }
 }
 
-class _FailedSourcesNotice extends ConsumerWidget {
-  const _FailedSourcesNotice();
+/// Explains when the feed isn't fully up to date: offline, or some papers
+/// unreachable.
+class _FeedStatusNotice extends ConsumerWidget {
+  const _FeedStatusNotice();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final failed = ref.watch(feedViewModelProvider
-        .select((feed) => feed.valueOrNull?.failedSources ?? const []));
-    if (failed.isEmpty) return const SliverToBoxAdapter();
+    final (isOffline, failed, updatedAt) =
+        ref.watch(feedViewModelProvider.select((feed) => (
+              feed.valueOrNull?.isOffline ?? false,
+              feed.valueOrNull?.failedSources ?? const [],
+              feed.valueOrNull?.updatedAt,
+            )));
+
+    final String message;
+    if (isOffline) {
+      message = updatedAt == null
+          ? "You're offline. Showing saved stories."
+          : "You're offline. Showing stories from "
+              '${timeAgoInline(updatedAt)}.';
+    } else if (failed.isNotEmpty) {
+      final names = failed.map((s) => s.name).join(', ');
+      message = "Couldn't reach $names. Pull down to try again.";
+    } else {
+      return const SliverToBoxAdapter();
+    }
 
     final theme = Theme.of(context);
-    final names = failed.map((s) => s.name).join(', ');
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -138,7 +196,7 @@ class _FailedSourcesNotice extends ConsumerWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                "Couldn't reach $names. Pull down to try again.",
+                message,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
