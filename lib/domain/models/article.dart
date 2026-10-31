@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
 class Article {
   const Article({
     required this.id,
@@ -7,7 +10,6 @@ class Article {
     required this.date,
     required this.imageUrl,
     required this.article,
-    required this.isBookmarked,
   });
 
   final int id;
@@ -17,5 +19,11 @@ class Article {
   final String date;
   final String imageUrl;
   final String article;
-  final bool isBookmarked;
+
+  // articles are identified by id, so lookups in sets and lists stay cheap
+  @override
+  bool operator ==(Object other) => other is Article && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

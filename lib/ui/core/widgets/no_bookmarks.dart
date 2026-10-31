@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:news_app/config/theme.dart';
 
 class NoBookmarks extends StatelessWidget {
   const NoBookmarks({super.key});
@@ -8,7 +9,6 @@ class NoBookmarks extends StatelessWidget {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           CircleAvatar(
             radius: 30,
@@ -19,20 +19,11 @@ class NoBookmarks extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          const SizedBox(
-            height: 20,
-          ),
-          const SizedBox(
-            width: 400,
-            child: Text(
-              "You haven't saved any articles yet. Start reading and bookmarking them now",
-              style: TextStyle(
-                fontSize: 16,
-                fontFamily: "SF Pro Text",
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
+          const SizedBox(height: 20),
+          const Text(
+            "You haven't saved any articles yet. Start reading and bookmarking them now",
+            style: AppTextStyles.emptyState,
+            textAlign: TextAlign.center,
           ),
         ],
       ),

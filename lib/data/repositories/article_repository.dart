@@ -1,9 +1,40 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:news_app/providers/news_brands_provider.dart';
+import 'package:news_app/domain/models/article.dart';
+import 'package:news_app/domain/models/news_brand.dart';
 
-import '../models/article_model.dart';
+/// Source of news articles. The sample implementation will be replaced by
+/// one that reads the newspapers' feeds.
+abstract class ArticleRepository {
+  List<NewsBrand> getBrands();
+  List<Article> getArticles();
+}
 
-const List<Article> allArticles = [
+class SampleArticleRepository implements ArticleRepository {
+  const SampleArticleRepository();
+
+  @override
+  List<NewsBrand> getBrands() => _sampleBrands;
+
+  @override
+  List<Article> getArticles() => _sampleArticles;
+}
+
+final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
+  return const SampleArticleRepository();
+});
+
+const _sampleBrands = <NewsBrand>[
+  NewsBrand(name: "The Herald"),
+  NewsBrand(name: "The Chronicle"),
+  NewsBrand(name: "The Sunday Mail"),
+  NewsBrand(name: "NewsDay"),
+  NewsBrand(name: "The Financial Gazzette"),
+  NewsBrand(name: "Zimbabwe Independent"),
+  NewsBrand(name: "The Zimbabwean"),
+  NewsBrand(name: "Daily News"),
+];
+
+const _sampleArticles = <Article>[
   Article(
     id: 1,
     newsBrand: "The Herald",
@@ -13,7 +44,6 @@ const List<Article> allArticles = [
         "Zimbabwe is set to receive 2.5 million doses of Covid-19 vaccines from China.",
     date: "1 June 2021",
     imageUrl: "assets/images/herald.png",
-    isBookmarked: false,
   ),
   Article(
     id: 2,
@@ -24,7 +54,6 @@ const List<Article> allArticles = [
         "Zimbabwe is set to receive 2.5 million doses of Covid-19 vaccines from China.",
     date: "1 June 2021",
     imageUrl: "assets/images/chronicle.png",
-    isBookmarked: true,
   ),
   Article(
     id: 3,
@@ -36,7 +65,6 @@ const List<Article> allArticles = [
         "The Zimbabwean government has launched a nationwide vaccination campaign in response to the rising number of Covid-19 cases.",
     date: "5 June 2021",
     imageUrl: "assets/images/sunday.png",
-    isBookmarked: false,
   ),
   Article(
     id: 4,
@@ -47,7 +75,6 @@ const List<Article> allArticles = [
         "Health experts in Zimbabwe are urging the public to get vaccinated as the country braces for a potential third wave of Covid-19 infections.",
     date: "10 June 2021",
     imageUrl: "assets/images/newsday.png",
-    isBookmarked: false,
   ),
   Article(
     id: 5,
@@ -58,7 +85,6 @@ const List<Article> allArticles = [
         "The Zimbabwean government has announced plans for the distribution of Covid-19 vaccines across the country, prioritizing high-risk groups.",
     date: "15 June 2021",
     imageUrl: "assets/images/gazzete.jpg",
-    isBookmarked: false,
   ),
   Article(
     id: 6,
@@ -69,7 +95,6 @@ const List<Article> allArticles = [
         "Zimbabwe has received an additional batch of Covid-19 vaccine doses through the COVAX initiative, bolstering the country's vaccination efforts.",
     date: "20 June 2021",
     imageUrl: "assets/images/independent.png",
-    isBookmarked: false,
   ),
   Article(
     id: 7,
@@ -80,7 +105,6 @@ const List<Article> allArticles = [
         "Despite the rollout of Covid-19 vaccines, health authorities in Zimbabwe are urging the public to remain vigilant and adhere to safety measures to prevent further spread of the virus.",
     date: "25 June 2021",
     imageUrl: "assets/images/zimbabwean.png",
-    isBookmarked: false,
   ),
   Article(
     id: 8,
@@ -91,7 +115,6 @@ const List<Article> allArticles = [
         "Zimbabwe has surpassed its vaccination target for the first phase of the immunization campaign, with health officials expressing optimism about the progress.",
     date: "30 June 2021",
     imageUrl: "assets/images/dailynews.png",
-    isBookmarked: false,
   ),
   Article(
     id: 9,
@@ -102,7 +125,6 @@ const List<Article> allArticles = [
         "Health authorities in Zimbabwe have raised concerns over vaccine hesitancy in rural areas, emphasizing the importance of education and awareness campaigns.",
     date: "5 July 2021",
     imageUrl: "assets/images/herald.png",
-    isBookmarked: false,
   ),
   Article(
     id: 10,
@@ -114,7 +136,6 @@ const List<Article> allArticles = [
         "The Zimbabwean government has launched mobile vaccination clinics to reach remote communities, aiming to ensure equitable access to Covid-19 vaccines.",
     date: "10 July 2021",
     imageUrl: "assets/images/chronicle.png",
-    isBookmarked: false,
   ),
   Article(
     id: 11,
@@ -126,7 +147,6 @@ const List<Article> allArticles = [
         "Zimbabwean health authorities are collaborating with the World Health Organization (WHO) to develop a comprehensive vaccine distribution strategy, aimed at reaching all segments of the population.",
     date: "15 July 2021",
     imageUrl: "assets/images/sunday.png",
-    isBookmarked: false,
   ),
   Article(
     id: 12,
@@ -138,15 +158,5 @@ const List<Article> allArticles = [
         "Scientists in Zimbabwe are exploring the potential of indigenous remedies alongside vaccination efforts, drawing on traditional knowledge to combat Covid-19.",
     date: "20 July 2021",
     imageUrl: "assets/images/newsday.png",
-    isBookmarked: false,
   ),
 ];
-
-final allArticlesProvider = Provider((ref) {
-  return allArticles;
-});
-
-final selectedBrandsArticlesProvider = Provider((ref) {
-  final currentBrand = ref.watch(selectedBrandsNameProvider).first;
-  return allArticles.where((brand) => brand.newsBrand == currentBrand).toList();
-});
