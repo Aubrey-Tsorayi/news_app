@@ -5,6 +5,7 @@ import 'package:news_app/routing/routes.dart';
 import 'package:news_app/ui/core/widgets/article_image.dart';
 import 'package:news_app/ui/core/widgets/article_tile.dart';
 import 'package:news_app/ui/core/widgets/bookmark_button.dart';
+import 'package:news_app/ui/core/widgets/read_aware_text.dart';
 import 'package:news_app/ui/core/widgets/source_logo.dart';
 
 /// The lead story at the top of the feed.
@@ -46,8 +47,8 @@ class FeaturedArticleCard extends StatelessWidget {
                     publishedAt: article.publishedAt,
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    article.title,
+                  ArticleHeadline(
+                    article: article,
                     style: theme.textTheme.headlineSmall
                         ?.copyWith(fontWeight: FontWeight.w700),
                   ),
@@ -66,11 +67,7 @@ class FeaturedArticleCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
               child: Row(
                 children: [
-                  Text(
-                    '${article.readingMinutes} min read',
-                    style: theme.textTheme.labelMedium
-                        ?.copyWith(color: colors.onSurfaceVariant),
-                  ),
+                  ReadingTimeLabel(article: article),
                   const Spacer(),
                   BookmarkButton(article: article),
                 ],

@@ -1,6 +1,6 @@
 import 'package:news_app/data/services/article_rows.dart';
+import 'package:news_app/data/services/news_database.dart';
 import 'package:news_app/domain/models/article.dart';
-import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// On-device copy of recently fetched articles, so the feed opens instantly
@@ -21,29 +21,14 @@ abstract class ArticleCache {
 }
 
 class SqfliteArticleCache implements ArticleCache {
-  SqfliteArticleCache();
+  SqfliteArticleCache(this._db);
 
-  static const _table = 'articles';
-  static const _fetchedAt = 'fetched_at';
+  final NewsDatabase _db;
 
-  // opened once and reused for the lifetime of the cache
-  late final Future<Database> _database = _open();
+  static const _table = NewsDatabase.articlesTable;
+  static const _fetchedAt = NewsDatabase.fetchedAtColumn;
 
-  Future<Database> _open() async {
-    // separate file from bookmarks, so clearing the cache can never touch
-    // saved articles
-    final path = join(await getDatabasesPath(), 'articles.db');
-    return openDatabase(path, version: 1, onCreate: (db, version) async {
-      await db.execute('''
-        CREATE TABLE $_table (
-          ${ArticleColumns.definitions},
-          $_fetchedAt INTEGER NOT NULL
-        )
-        ''');
-      await db.execute('CREATE INDEX idx_articles_published '
-          'ON $_table (${ArticleColumns.publishedAt})');
-    });
-  }
+  Future<Database> get _database => _db.database;
 
   @override
   Future<List<Article>> getAll() async {

@@ -4,6 +4,7 @@ import 'package:news_app/domain/models/article.dart';
 import 'package:news_app/routing/routes.dart';
 import 'package:news_app/ui/core/widgets/article_image.dart';
 import 'package:news_app/ui/core/widgets/bookmark_button.dart';
+import 'package:news_app/ui/core/widgets/read_aware_text.dart';
 import 'package:news_app/ui/core/widgets/source_logo.dart';
 import 'package:news_app/utils/formatting.dart';
 
@@ -45,12 +46,11 @@ class ArticleTile extends StatelessWidget {
                           publishedAt: article.publishedAt,
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          article.title,
+                        ArticleHeadline(
+                          article: article,
                           style: theme.textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                           maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -79,13 +79,7 @@ class ArticleTile extends StatelessWidget {
             ),
             Row(
               children: [
-                Icon(Icons.schedule, size: 14, color: colors.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Text(
-                  '${article.readingMinutes} min read',
-                  style: theme.textTheme.labelMedium
-                      ?.copyWith(color: colors.onSurfaceVariant),
-                ),
+                ReadingTimeLabel(article: article),
                 const Spacer(),
                 BookmarkButton(article: article),
               ],

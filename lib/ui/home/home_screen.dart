@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:news_app/config/news_sources.dart';
 import 'package:news_app/config/theme.dart';
 import 'package:news_app/domain/models/news_source.dart';
+import 'package:news_app/routing/routes.dart';
 import 'package:news_app/ui/core/widgets/article_tile.dart';
 import 'package:news_app/ui/core/widgets/featured_article_card.dart';
 import 'package:news_app/ui/core/widgets/state_views.dart';
@@ -61,6 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             slivers: [
               SliverAppBar.medium(
                 title: Text('Today'),
+                actions: [_SearchButton()],
                 bottom: PreferredSize(
                   preferredSize: Size.fromHeight(24),
                   child: _DateLine(),
@@ -76,6 +78,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SearchButton extends StatelessWidget {
+  const _SearchButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: 'Search',
+      icon: const Icon(Icons.search),
+      onPressed: () => Navigator.pushNamed(context, Routes.search),
     );
   }
 }
@@ -144,16 +159,35 @@ class _SourceChips extends ConsumerWidget {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: sources.length,
+      // the unread filter first, then one chip per paper
+      itemCount: sources.length + 1,
       separatorBuilder: (_, __) => const SizedBox(width: 8),
       itemBuilder: (context, index) {
-        final source = sources[index];
+        if (index == 0) return const _UnreadOnlyChip();
+        final source = sources[index - 1];
         return ChoiceChip(
           label: Text(source?.name ?? 'All papers'),
           selected: selected == source?.id,
           onSelected: (_) => notifier.select(source?.id),
         );
       },
+    );
+  }
+}
+
+class _UnreadOnlyChip extends ConsumerWidget {
+  const _UnreadOnlyChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadOnly = ref.watch(unreadOnlyProvider);
+    return FilterChip(
+      avatar: Icon(unreadOnly ? Icons.mark_email_unread : Icons.filter_list,
+          size: 18),
+      label: const Text('Unread'),
+      tooltip: unreadOnly ? 'Show all stories' : 'Hide stories you have read',
+      selected: unreadOnly,
+      onSelected: (_) => ref.read(unreadOnlyProvider.notifier).toggle(),
     );
   }
 }
@@ -235,13 +269,21 @@ class _Feed extends ConsumerWidget {
       ),
       data: (articles) {
         if (articles.isEmpty) {
-          return const SliverFillRemaining(
+          final caughtUp = ref.watch(unreadOnlyProvider);
+          return SliverFillRemaining(
             hasScrollBody: false,
-            child: MessageView(
-              icon: Icons.inbox_outlined,
-              title: 'No stories yet',
-              message: 'This paper has nothing new right now.',
-            ),
+            child: caughtUp
+                ? const MessageView(
+                    icon: Icons.done_all,
+                    title: "You're all caught up",
+                    message: "You've read every story here. Pull down to "
+                        'check for new ones.',
+                  )
+                : const MessageView(
+                    icon: Icons.inbox_outlined,
+                    title: 'No stories yet',
+                    message: 'This paper has nothing new right now.',
+                  ),
           );
         }
         return SliverPadding(

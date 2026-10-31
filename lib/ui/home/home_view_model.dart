@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:news_app/data/repositories/article_repository.dart';
 import 'package:news_app/domain/models/article.dart';
+import 'package:news_app/ui/history/read_articles_view_model.dart';
 
 /// Latest articles from every paper.
 ///
@@ -70,13 +71,30 @@ final selectedSourceProvider =
     NotifierProvider<SelectedSourceNotifier, String?>(
         SelectedSourceNotifier.new);
 
-/// Articles for the selected source; only recomputed when the feed or the
-/// filter changes.
+/// Whether the feed hides articles the reader has already opened.
+class UnreadOnlyNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}
+
+final unreadOnlyProvider =
+    NotifierProvider<UnreadOnlyNotifier, bool>(UnreadOnlyNotifier.new);
+
+/// Articles matching the source and unread filters; only recomputed when the
+/// feed or a filter changes.
 final visibleArticlesProvider = Provider<AsyncValue<List<Article>>>((ref) {
   final sourceId = ref.watch(selectedSourceProvider);
-  return ref.watch(feedViewModelProvider).whenData((feed) => sourceId == null
-      ? feed.articles
-      : feed.articles
-          .where((a) => a.sourceId == sourceId)
-          .toList(growable: false));
+  final unreadOnly = ref.watch(unreadOnlyProvider);
+  final readIds = unreadOnly
+      ? ref.watch(readArticlesViewModelProvider).valueOrNull ?? const {}
+      : const <String>{};
+
+  return ref.watch(feedViewModelProvider).whenData((feed) => [
+        for (final article in feed.articles)
+          if ((sourceId == null || article.sourceId == sourceId) &&
+              !readIds.contains(article.id))
+            article,
+      ]);
 });

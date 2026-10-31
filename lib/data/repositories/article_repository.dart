@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:news_app/config/news_sources.dart';
 import 'package:news_app/data/services/article_cache.dart';
 import 'package:news_app/data/services/feed_service.dart';
+import 'package:news_app/data/services/news_database.dart';
 import 'package:news_app/domain/models/article.dart';
 import 'package:news_app/domain/models/news_source.dart';
 
@@ -122,8 +123,11 @@ final feedServiceProvider = Provider<FeedService>((ref) {
   return FeedService(ref.watch(httpClientProvider));
 });
 
-final articleCacheProvider =
-    Provider<ArticleCache>((ref) => SqfliteArticleCache());
+/// The feed database, shared by the article cache and reading history.
+final newsDatabaseProvider = Provider<NewsDatabase>((ref) => NewsDatabase());
+
+final articleCacheProvider = Provider<ArticleCache>(
+    (ref) => SqfliteArticleCache(ref.watch(newsDatabaseProvider)));
 
 final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
   return FeedArticleRepository(
