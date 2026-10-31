@@ -8,41 +8,61 @@ class BookmarkDatabaseService {
 
   static const tableName = 'bookmarks';
   static const idColumn = 'id';
-  static const newsBrandColumn = 'newsBrand';
+  static const sourceIdColumn = 'source_id';
   static const titleColumn = 'title';
+  static const urlColumn = 'url';
+  static const publishedAtColumn = 'published_at';
+  static const summaryColumn = 'summary';
   static const authorColumn = 'author';
-  static const dateColumn = 'date';
-  static const imageUrlColumn = 'imageUrl';
-  static const articleColumn = 'article';
-  static const isBookmarkedColumn = 'isBookmarked';
+  static const contentColumn = 'content';
+  static const imageUrlColumn = 'image_url';
+  static const isTruncatedColumn = 'is_truncated';
+  static const savedAtColumn = 'saved_at';
+
+  static const _version = 2;
 
   // opened once and reused for the lifetime of the service
   late final Future<Database> _database = _open();
 
   Future<Database> _open() async {
     final databasePath = join(await getDatabasesPath(), 'bookmarks.db');
-    return openDatabase(databasePath, version: 1,
-        onCreate: (db, version) async {
-      // the id column holds the article's own id so bookmarks can be matched
-      // back to articles
-      await db.execute('''
-      CREATE TABLE $tableName (
-        $idColumn INTEGER PRIMARY KEY,
-        $newsBrandColumn TEXT NOT NULL,
-        $titleColumn TEXT NOT NULL,
-        $authorColumn TEXT NOT NULL,
-        $dateColumn TEXT NOT NULL,
-        $imageUrlColumn TEXT NOT NULL,
-        $articleColumn TEXT NOT NULL,
-        $isBookmarkedColumn INTEGER NOT NULL
-      )
-      ''');
-    });
+    return openDatabase(
+      databasePath,
+      version: _version,
+      onCreate: (db, version) => _createBookmarksTable(db),
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // version 1 only ever held the bundled sample articles, which no
+        // longer exist, so the old table is replaced rather than migrated
+        if (oldVersion < 2) {
+          await db.execute('DROP TABLE IF EXISTS $tableName');
+          await _createBookmarksTable(db);
+        }
+      },
+    );
   }
 
+  static Future<void> _createBookmarksTable(Database db) {
+    return db.execute('''
+      CREATE TABLE $tableName (
+        $idColumn TEXT PRIMARY KEY,
+        $sourceIdColumn TEXT NOT NULL,
+        $titleColumn TEXT NOT NULL,
+        $urlColumn TEXT NOT NULL,
+        $publishedAtColumn INTEGER NOT NULL,
+        $summaryColumn TEXT NOT NULL,
+        $authorColumn TEXT,
+        $contentColumn TEXT NOT NULL,
+        $imageUrlColumn TEXT,
+        $isTruncatedColumn INTEGER NOT NULL,
+        $savedAtColumn INTEGER NOT NULL
+      )
+      ''');
+  }
+
+  /// Newest saves first.
   Future<List<Map<String, Object?>>> getAll() async {
     final db = await _database;
-    return db.query(tableName);
+    return db.query(tableName, orderBy: '$savedAtColumn DESC');
   }
 
   Future<void> insert(Map<String, Object?> row) async {
@@ -51,7 +71,7 @@ class BookmarkDatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> delete(int id) async {
+  Future<void> delete(String id) async {
     final db = await _database;
     await db.delete(tableName, where: '$idColumn = ?', whereArgs: [id]);
   }

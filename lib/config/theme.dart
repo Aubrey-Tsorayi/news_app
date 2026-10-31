@@ -1,32 +1,38 @@
 import 'package:flutter/material.dart';
 
-const Color primaryColor = Colors.red;
+/// Brand red, used as the seed for the Material 3 colour scheme.
+const brandRed = Color(0xFFD32F2F);
 
-const _fontFamily = 'SF Pro Text';
+/// Comfortable line length for reading on tablets and foldables.
+const maxReadingWidth = 680.0;
 
-final appTheme = ThemeData(
-  useMaterial3: true,
-  fontFamily: _fontFamily,
-);
+ThemeData buildTheme(Brightness brightness) {
+  final colorScheme = ColorScheme.fromSeed(
+    seedColor: brandRed,
+    brightness: brightness,
+    // keeps the primary colour close to the brand red instead of a pastel
+    dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+  );
 
-/// Text styles shared across screens, defined once instead of per widget.
-abstract final class AppTextStyles {
-  static const heading = TextStyle(fontSize: 24, fontWeight: FontWeight.w700);
-  static const sectionTitle =
-      TextStyle(fontSize: 20, fontWeight: FontWeight.w600);
-  static const articleTitle =
-      TextStyle(fontSize: 20, fontWeight: FontWeight.w700);
-  static const cardTitle =
-      TextStyle(color: Colors.black, fontWeight: FontWeight.w700, fontSize: 18);
-  static const rowTitle = TextStyle(fontSize: 18, fontWeight: FontWeight.w600);
-  static const author = TextStyle(fontSize: 16, fontWeight: FontWeight.w600);
-  static const emptyState =
-      TextStyle(fontSize: 16, fontWeight: FontWeight.w500);
-  static const chip = TextStyle(fontSize: 12, fontWeight: FontWeight.w600);
-  static final subtext = TextStyle(
-      fontSize: 16, fontWeight: FontWeight.w400, color: Colors.grey[600]);
-  static final rowBrand = TextStyle(
-      fontSize: 16, fontWeight: FontWeight.w400, color: Colors.grey[500]);
-  static final body = TextStyle(
-      fontSize: 16, fontWeight: FontWeight.w400, color: Colors.grey[600]);
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor: colorScheme.surface,
+    appBarTheme: AppBarTheme(
+      backgroundColor: colorScheme.surface,
+      surfaceTintColor: colorScheme.surfaceTint,
+    ),
+    chipTheme: const ChipThemeData(showCheckmark: false),
+    cardTheme: const CardThemeData(
+      clipBehavior: Clip.antiAlias,
+      margin: EdgeInsets.zero,
+    ),
+    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        // Android's predictive back animation
+        TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+      },
+    ),
+  );
 }

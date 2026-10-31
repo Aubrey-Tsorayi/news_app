@@ -1,46 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:news_app/config/news_sources.dart';
 import 'package:news_app/config/theme.dart';
-import 'package:news_app/domain/models/news_brand.dart';
-import 'package:news_app/ui/core/widgets/header.dart';
-import 'package:news_app/ui/core/widgets/news_card.dart';
-import 'package:news_app/ui/core/widgets/news_row.dart';
+import 'package:news_app/domain/models/news_source.dart';
+import 'package:news_app/ui/core/widgets/article_tile.dart';
+import 'package:news_app/ui/core/widgets/featured_article_card.dart';
+import 'package:news_app/ui/core/widgets/state_views.dart';
 import 'package:news_app/ui/home/home_view_model.dart';
+import 'package:news_app/utils/formatting.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  Future<void> _refresh(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(feedViewModelProvider.notifier).refresh();
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text("Couldn't refresh. Check your connection."),
+      ));
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
-    // each section watches only the state it needs, so selecting a brand
-    // doesn't rebuild the "More news" list
-    return const Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(top: 25, left: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              HeaderText(
-                  heading: "Browse", subtext: "Discover today's news update"),
-              SizedBox(height: 20),
-              Expanded(
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(child: SizedBox(height: 10)),
-                    SliverToBoxAdapter(child: _BrandChips()),
-                    SliverToBoxAdapter(child: SizedBox(height: 30)),
-                    SliverToBoxAdapter(child: _Headlines()),
-                    SliverToBoxAdapter(child: SizedBox(height: 25)),
-                    SliverToBoxAdapter(
-                      child: Text("More news for you",
-                          style: AppTextStyles.sectionTitle),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: maxReadingWidth + 40),
+        child: RefreshIndicator(
+          onRefresh: () => _refresh(context, ref),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverAppBar.medium(
+                title: const Text('Today'),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(24),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                          start: 16, bottom: 8),
+                      child: Text(
+                        longDate(DateTime.now()),
+                        style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
                     ),
-                    SliverToBoxAdapter(child: SizedBox(height: 20)),
-                    _MoreNews(),
-                  ],
+                  ),
                 ),
               ),
+              const SliverPersistentHeader(
+                pinned: true,
+                delegate: _SourceFilterHeader(),
+              ),
+              const _FailedSourcesNotice(),
+              const _Feed(),
             ],
           ),
         ),
@@ -49,104 +67,146 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _BrandChips extends ConsumerWidget {
-  const _BrandChips();
+class _SourceFilterHeader extends SliverPersistentHeaderDelegate {
+  const _SourceFilterHeader();
+
+  static const _height = 56.0;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.surface,
+      child: const _SourceChips(),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SourceFilterHeader oldDelegate) => false;
+}
+
+class _SourceChips extends ConsumerWidget {
+  const _SourceChips();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final brands = ref.watch(brandsProvider);
-    final selected = ref.watch(selectedBrandProvider);
+    final selected = ref.watch(selectedSourceProvider);
+    final notifier = ref.read(selectedSourceProvider.notifier);
+    final sources = <NewsSource?>[null, ...newsSources];
 
-    return SizedBox(
-      height: 40,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: brands.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final brand = brands[index];
-          return _BrandChip(
-            brand: brand,
-            isSelected: brand == selected,
-            onTap: () => ref.read(selectedBrandProvider.notifier).select(brand),
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: sources.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
+      itemBuilder: (context, index) {
+        final source = sources[index];
+        return ChoiceChip(
+          label: Text(source?.name ?? 'All papers'),
+          selected: selected == source?.id,
+          onSelected: (_) => notifier.select(source?.id),
+        );
+      },
+    );
+  }
+}
+
+class _FailedSourcesNotice extends ConsumerWidget {
+  const _FailedSourcesNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final failed = ref.watch(feedViewModelProvider
+        .select((feed) => feed.valueOrNull?.failedSources ?? const []));
+    if (failed.isEmpty) return const SliverToBoxAdapter();
+
+    final theme = Theme.of(context);
+    final names = failed.map((s) => s.name).join(', ');
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        child: Row(
+          children: [
+            Icon(Icons.cloud_off,
+                size: 16, color: theme.colorScheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                "Couldn't reach $names. Pull down to try again.",
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Feed extends ConsumerWidget {
+  const _Feed();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final articles = ref.watch(visibleArticlesProvider);
+
+    return articles.when(
+      skipLoadingOnRefresh: true,
+      loading: () => SliverList.builder(
+        itemCount: 6,
+        itemBuilder: (_, __) => const ArticleSkeleton(),
+      ),
+      error: (_, __) => SliverFillRemaining(
+        hasScrollBody: false,
+        child: MessageView(
+          icon: Icons.wifi_off,
+          title: "Couldn't load the news",
+          message: 'Check your internet connection and try again.',
+          action: FilledButton.tonal(
+            onPressed: () => ref.invalidate(feedViewModelProvider),
+            child: const Text('Try again'),
+          ),
+        ),
+      ),
+      data: (articles) {
+        if (articles.isEmpty) {
+          return const SliverFillRemaining(
+            hasScrollBody: false,
+            child: MessageView(
+              icon: Icons.inbox_outlined,
+              title: 'No stories yet',
+              message: 'This paper has nothing new right now.',
+            ),
           );
-        },
-      ),
-    );
-  }
-}
-
-class _BrandChip extends StatelessWidget {
-  const _BrandChip({
-    required this.brand,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final NewsBrand brand;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? primaryColor : Colors.grey[300],
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          brand.name,
-          style: AppTextStyles.chip.copyWith(
-            color: isSelected ? Colors.white : Colors.black,
+        }
+        return SliverPadding(
+          padding: const EdgeInsets.only(bottom: 24),
+          sliver: SliverList.separated(
+            itemCount: articles.length,
+            itemBuilder: (context, index) {
+              final article = articles[index];
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: FeaturedArticleCard(
+                      key: ValueKey(article.id), article: article),
+                );
+              }
+              return ArticleTile(key: ValueKey(article.id), article: article);
+            },
+            separatorBuilder: (_, index) => index == 0
+                ? const SizedBox.shrink()
+                : const Divider(height: 1, indent: 16, endIndent: 16),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Headlines extends ConsumerWidget {
-  const _Headlines();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final headlines = ref.watch(headlinesProvider);
-
-    return SizedBox(
-      // extra room so the card shadow isn't clipped
-      height: NewsCard.height + 10,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: headlines.length,
-        itemBuilder: (context, index) => Align(
-          alignment: Alignment.topLeft,
-          child: NewsCard(
-            key: ValueKey(headlines[index].id),
-            article: headlines[index],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MoreNews extends ConsumerWidget {
-  const _MoreNews();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final articles = ref.watch(allArticlesProvider);
-
-    return SliverList.builder(
-      itemCount: articles.length,
-      itemBuilder: (context, index) => NewsRow(
-        key: ValueKey(articles[index].id),
-        article: articles[index],
-      ),
+        );
+      },
     );
   }
 }
