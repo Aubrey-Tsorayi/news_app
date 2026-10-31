@@ -113,6 +113,22 @@ void main() {
       expect(result.failedSources, [daily]);
     });
 
+    test('a story in two papers\' feeds is credited to the first paper',
+        () async {
+      // same link in both feeds, as with stories cross-filed by Zimpapers
+      service.responses['herald'] = [
+        article('shared', 'herald', Duration.zero)
+      ];
+      service.responses['dailynews'] = [
+        article('shared', 'dailynews', Duration.zero),
+      ];
+
+      final result = await repository.fetchLatest();
+
+      expect(result.articles, hasLength(1));
+      expect(result.articles.single.sourceId, 'herald');
+    });
+
     test('throws when no paper can be reached', () async {
       service.failing.addAll(['herald', 'dailynews']);
       expect(repository.fetchLatest(), throwsA(isA<FeedException>()));

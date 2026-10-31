@@ -15,7 +15,7 @@ class NewsDatabase {
   static const readIdColumn = 'id';
   static const readAtColumn = 'read_at';
 
-  static const _version = 2;
+  static const _version = 3;
 
   /// Opened once and shared by every store that uses it.
   late final Future<Database> database = _open();
@@ -31,6 +31,10 @@ class NewsDatabase {
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) await _createReadArticles(db);
+        // before v3 the site-wide Zimpapers feed filed Chronicle and Sunday
+        // Mail stories under The Herald; the cache is disposable, so start
+        // it afresh rather than keep mislabelled stories for a week
+        if (oldVersion < 3) await db.delete(articlesTable);
       },
     );
   }

@@ -6,6 +6,7 @@ import 'package:news_app/data/services/feed_service.dart';
 import 'package:news_app/data/services/news_database.dart';
 import 'package:news_app/domain/models/article.dart';
 import 'package:news_app/domain/models/news_source.dart';
+import 'package:news_app/domain/republished.dart';
 
 /// The articles to show, and how fresh they are.
 class FeedResult {
@@ -67,7 +68,7 @@ class FeedArticleRepository implements ArticleRepository {
     final articles = await _cache.getAll();
     if (articles.isEmpty) return null;
     return FeedResult(
-      articles: articles,
+      articles: withoutRepublished(articles),
       updatedAt: await _cache.lastFetchedAt(),
     );
   }
@@ -94,19 +95,24 @@ class FeedArticleRepository implements ArticleRepository {
 
     final now = _now();
     final cutoff = now.subtract(retention);
-    final fetched = [
-      for (final (_, articles, _) in results)
-        for (final article in articles ?? const <Article>[])
-          if (article.publishedAt.isAfter(cutoff)) article,
-    ];
+    // a story in several papers' feeds is credited to the first paper in
+    // source order, so it doesn't flip between papers on each refresh
+    final fetched = <String, Article>{};
+    for (final (_, articles, _) in results) {
+      for (final article in articles ?? const <Article>[]) {
+        if (article.publishedAt.isAfter(cutoff)) {
+          fetched.putIfAbsent(article.id, () => article);
+        }
+      }
+    }
 
-    await _cache.saveAll(fetched, fetchedAt: now);
+    await _cache.saveAll(fetched.values.toList(), fetchedAt: now);
     await _cache.deletePublishedBefore(cutoff);
 
     // read back from the cache so papers that failed this time still show
     // what they published earlier in the week
     return FeedResult(
-      articles: await _cache.getAll(),
+      articles: withoutRepublished(await _cache.getAll()),
       failedSources: failed,
       updatedAt: now,
     );
