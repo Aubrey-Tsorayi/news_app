@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:news_app/models/article_model.dart';
+import 'package:news_app/providers/bookmarks_provider.dart';
 import 'package:news_app/utilities/colors.dart';
 
 class NewsCard extends ConsumerWidget {
   const NewsCard({
     super.key,
-    required this.id,
-    required this.image,
-    required this.title,
-    required this.isBookmark,
+    required this.article,
   });
 
-  final int id;
-  final String image;
-  final String title;
-  final bool isBookmark;
+  final Article article;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isBookmark = ref.watch(bookmarkedIdsProvider).contains(article.id);
+
     return Container(
       margin: const EdgeInsets.only(right: 20),
       height: 150,
@@ -44,7 +42,7 @@ class NewsCard extends ConsumerWidget {
             top: 25,
             left: 20,
             child: Image.asset(
-              image,
+              article.imageUrl,
               fit: BoxFit.scaleDown,
               width: 150,
             ),
@@ -54,7 +52,9 @@ class NewsCard extends ConsumerWidget {
             right: 5,
             child: GestureDetector(
               onTap: () {
-                // ref.read(bookmarkNotifierProvider.notifier).addBookmark();
+                ref
+                    .read(bookmarkNotifierProvider.notifier)
+                    .toggleBookmark(article);
               },
               child: Icon(
                 isBookmark ? Icons.bookmark : Icons.bookmark_add_outlined,
@@ -69,7 +69,7 @@ class NewsCard extends ConsumerWidget {
             child: SizedBox(
               width: 200,
               child: Text(
-                title,
+                article.title,
                 style: const TextStyle(
                   color: Colors.black,
                   fontFamily: "SF Pro Text",

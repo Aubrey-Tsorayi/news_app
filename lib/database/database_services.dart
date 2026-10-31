@@ -30,11 +30,13 @@ class DatabaseService {
   Future<Database> getDatabase() async {
     final databaseDirPath = await getDatabasesPath();
     final databasePath = join(databaseDirPath, 'bookmarks.db');
-    final database =
-        await openDatabase(databasePath, version: 1, onCreate: (db, version) {
-      db.execute('''
+    final database = await openDatabase(databasePath, version: 1,
+        onCreate: (db, version) async {
+      // the id column holds the article's own id so bookmarks can be matched
+      // back to articles
+      await db.execute('''
       CREATE TABLE $_bookmarksTableName (
-        $_bookmarksIdColumnName INTEGER PRIMARY KEY AUTOINCREMENT,
+        $_bookmarksIdColumnName INTEGER PRIMARY KEY,
         $_bookmarksNewsBrandColumnName TEXT NOT NULL,
         $_bookmarksTitleColumnName TEXT NOT NULL,
         $_bookmarksAuthorColumnName TEXT NOT NULL,
@@ -48,9 +50,10 @@ class DatabaseService {
     return database;
   }
 
-  void addBookMark(Article article) async {
+  Future<void> addBookMark(Article article) async {
     final db = await database;
     final bookmark = {
+      _bookmarksIdColumnName: article.id,
       _bookmarksNewsBrandColumnName: article.newsBrand,
       _bookmarksTitleColumnName: article.title,
       _bookmarksAuthorColumnName: article.author,
@@ -59,18 +62,28 @@ class DatabaseService {
       _bookmarksArticleColumnName: article.article,
       _bookmarksIsBookmarkedColumnName: 1
     };
-    await db.insert(_bookmarksTableName, bookmark);
+    await db.insert(_bookmarksTableName, bookmark,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  // TODO: implement getBookmark method
   Future<List<Article>> getBookmarks() async {
     final db = await database;
     final data = await db.query(_bookmarksTableName);
-    List<Article> bookmarks = [];
-    return bookmarks;
+    return data
+        .map((row) => Article(
+              id: row[_bookmarksIdColumnName] as int,
+              newsBrand: row[_bookmarksNewsBrandColumnName] as String,
+              title: row[_bookmarksTitleColumnName] as String,
+              author: row[_bookmarksAuthorColumnName] as String,
+              date: row[_bookmarksDateColumnName] as String,
+              imageUrl: row[_bookmarksImageUrlColumnName] as String,
+              article: row[_bookmarksArticleColumnName] as String,
+              isBookmarked: row[_bookmarksIsBookmarkedColumnName] == 1,
+            ))
+        .toList();
   }
 
-  void deleteBookMark(int id) async {
+  Future<void> deleteBookMark(int id) async {
     final db = await database;
     await db.delete(_bookmarksTableName,
         where: '$_bookmarksIdColumnName = ?', whereArgs: [id]);

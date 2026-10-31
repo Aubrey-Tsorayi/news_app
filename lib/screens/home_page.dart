@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:news_app/providers/article_provider.dart';
-import 'package:news_app/providers/bookmarks_provider.dart';
 import 'package:news_app/providers/news_brands_provider.dart';
 import 'package:news_app/utilities/colors.dart';
 import 'package:news_app/widgets/header.dart';
@@ -17,7 +16,6 @@ class HomePage extends ConsumerWidget {
     final brands = ref.watch(newsBrandsNotifierProvider);
     final headlines = ref.watch(selectedBrandsArticlesProvider);
     final allArticles = ref.watch(allArticlesProvider);
-    final bookmarks = ref.watch(bookmarkNotifierProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -86,12 +84,7 @@ class HomePage extends ConsumerWidget {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: headlines.map((article) {
-                            return NewsCard(
-                              id: article.id,
-                              title: article.title,
-                              image: article.imageUrl,
-                              isBookmark: article.isBookmarked,
-                            );
+                            return NewsCard(article: article);
                           }).toList(),
                         ),
                       ),

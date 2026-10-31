@@ -30,24 +30,30 @@ class _BookmarkPageState extends ConsumerState<BookmarkPage> {
             const SizedBox(
               height: 20,
             ),
-            allBookmarks.isEmpty
-                ? const Expanded(
-                    child: NoBookmarks(),
-                  )
-                : Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.vertical,
-                      child: Column(
-                        children: allBookmarks.map((book) {
-                          return NewsRow(
-                            id: book.id,
-                            title: book.title,
-                            newsBrand: book.newsBrand,
-                          );
-                        }).toList(),
+            Expanded(
+              child: allBookmarks.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                error: (error, _) => const Center(
+                  child: Text("Couldn't load your bookmarks"),
+                ),
+                data: (bookmarks) => bookmarks.isEmpty
+                    ? const NoBookmarks()
+                    : SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: Column(
+                          children: bookmarks.map((book) {
+                            return NewsRow(
+                              id: book.id,
+                              title: book.title,
+                              newsBrand: book.newsBrand,
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    ),
-                  ),
+              ),
+            ),
           ],
         ),
       )),
