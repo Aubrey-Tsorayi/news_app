@@ -10,9 +10,17 @@ import 'package:news_app/ui/home/home_view_model.dart';
 final now = DateTime.utc(2026, 10, 31, 12);
 
 const herald = NewsSource(
-    id: 'herald', name: 'The Herald', feedUrl: 'h', logoAsset: 'h.png');
+    id: 'herald',
+    name: 'The Herald',
+    feedUrl: 'h',
+    logoAsset: 'h.png',
+    access: SourceAccess.free);
 const daily = NewsSource(
-    id: 'dailynews', name: 'Daily News', feedUrl: 'd', logoAsset: 'd.png');
+    id: 'dailynews',
+    name: 'Daily News',
+    feedUrl: 'd',
+    logoAsset: 'd.png',
+    access: SourceAccess.subscription);
 
 Article article(String id, String sourceId, Duration age) => Article(
       id: id,

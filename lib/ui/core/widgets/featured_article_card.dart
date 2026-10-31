@@ -6,7 +6,6 @@ import 'package:news_app/ui/core/widgets/article_image.dart';
 import 'package:news_app/ui/core/widgets/article_tile.dart';
 import 'package:news_app/ui/core/widgets/bookmark_button.dart';
 import 'package:news_app/ui/core/widgets/read_aware_text.dart';
-import 'package:news_app/ui/core/widgets/source_logo.dart';
 
 /// The lead story at the top of the feed.
 class FeaturedArticleCard extends StatelessWidget {
@@ -42,9 +41,9 @@ class FeaturedArticleCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ArticleMeta(
-                    sourceName: source.name,
-                    logo: SourceLogo(source: source, size: 18),
+                    source: source,
                     publishedAt: article.publishedAt,
+                    logoSize: 18,
                   ),
                   const SizedBox(height: 10),
                   ArticleHeadline(

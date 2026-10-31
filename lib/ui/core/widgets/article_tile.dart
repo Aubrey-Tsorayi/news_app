@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:news_app/config/news_sources.dart';
 import 'package:news_app/domain/models/article.dart';
 import 'package:news_app/routing/routes.dart';
+import 'package:news_app/domain/models/news_source.dart';
+import 'package:news_app/ui/core/widgets/access_label.dart';
 import 'package:news_app/ui/core/widgets/article_image.dart';
 import 'package:news_app/ui/core/widgets/bookmark_button.dart';
 import 'package:news_app/ui/core/widgets/read_aware_text.dart';
@@ -41,8 +43,7 @@ class ArticleTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ArticleMeta(
-                          sourceName: source.name,
-                          logo: SourceLogo(source: source, size: 16),
+                          source: source,
                           publishedAt: article.publishedAt,
                         ),
                         const SizedBox(height: 6),
@@ -91,18 +92,18 @@ class ArticleTile extends StatelessWidget {
   }
 }
 
-/// "[logo] The Herald · 3 h ago"
+/// "[logo] The Herald · 3 h ago · 🔓 Free"
 class ArticleMeta extends StatelessWidget {
   const ArticleMeta({
     super.key,
-    required this.sourceName,
-    required this.logo,
+    required this.source,
     required this.publishedAt,
+    this.logoSize = 16,
   });
 
-  final String sourceName;
-  final Widget logo;
+  final NewsSource source;
   final DateTime publishedAt;
+  final double logoSize;
 
   @override
   Widget build(BuildContext context) {
@@ -112,16 +113,18 @@ class ArticleMeta extends StatelessWidget {
 
     return Row(
       children: [
-        ExcludeSemantics(child: logo),
+        ExcludeSemantics(child: SourceLogo(source: source, size: logoSize)),
         const SizedBox(width: 8),
         Flexible(
           child: Text(
-            '$sourceName · ${timeAgo(publishedAt)}',
+            '${source.name} · ${timeAgo(publishedAt)}',
             style: style,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
+        Text(' · ', style: style),
+        AccessLabel(source: source, style: style),
       ],
     );
   }

@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:news_app/config/news_sources.dart';
 import 'package:news_app/config/theme.dart';
 import 'package:news_app/domain/models/article.dart';
+import 'package:news_app/domain/models/news_source.dart';
+import 'package:news_app/ui/core/widgets/access_label.dart';
 import 'package:news_app/ui/core/widgets/article_image.dart';
 import 'package:news_app/ui/core/widgets/bookmark_button.dart';
 import 'package:news_app/ui/core/widgets/source_logo.dart';
@@ -40,16 +42,17 @@ class ArticleScreen extends StatelessWidget {
     final bodyStyle =
         theme.textTheme.bodyLarge?.copyWith(height: 1.6, fontSize: 17);
 
-    // over a photo, give the app bar buttons a backing so they stay visible
-    final appBarTheme = article.imageUrl == null
-        ? theme
-        : theme.copyWith(
-            iconButtonTheme: IconButtonThemeData(
-              style: IconButton.styleFrom(
-                backgroundColor: colors.surface.withValues(alpha: 0.85),
-              ),
+    // over a photo, give the app bar buttons a backing so they stay
+    // visible. This must be an IconButtonTheme widget: AppBar provides its
+    // own IconButtonTheme, which takes precedence over ThemeData's.
+    final buttonTheme = IconButtonThemeData(
+      style: article.imageUrl == null
+          ? null
+          : IconButton.styleFrom(
+              backgroundColor: colors.surface.withValues(alpha: 0.85),
+              foregroundColor: colors.onSurface,
             ),
-          );
+    );
 
     return _MarkReadOnOpen(
       articleId: article.id,
@@ -58,8 +61,12 @@ class ArticleScreen extends StatelessWidget {
           slivers: [
             SliverAppBar(
               pinned: true,
-              // the page theme's icon buttons, so only the app bar is affected
-              leading: Theme(data: appBarTheme, child: const BackButton()),
+              // centred so the backing circle keeps its natural size instead
+              // of stretching to fill the leading slot
+              leading: Center(
+                child: IconButtonTheme(
+                    data: buttonTheme, child: const BackButton()),
+              ),
               expandedHeight: article.imageUrl != null ? 260 : null,
               flexibleSpace: article.imageUrl == null
                   ? null
@@ -70,8 +77,8 @@ class ArticleScreen extends StatelessWidget {
                       ),
                     ),
               actions: [
-                Theme(
-                  data: appBarTheme,
+                IconButtonTheme(
+                  data: buttonTheme,
                   child: Row(
                     children: [
                       IconButton(
@@ -109,8 +116,12 @@ class ArticleScreen extends StatelessWidget {
                               ExcludeSemantics(
                                   child: SourceLogo(source: source, size: 22)),
                               const SizedBox(width: 10),
-                              Text(source.name,
-                                  style: theme.textTheme.labelLarge),
+                              Flexible(
+                                child: Text(source.name,
+                                    style: theme.textTheme.labelLarge),
+                              ),
+                              const SizedBox(width: 12),
+                              _AccessBadge(source: source),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -137,7 +148,7 @@ class ArticleScreen extends StatelessWidget {
                             ),
                           const SizedBox(height: 8),
                           _ContinueReading(
-                            sourceName: source.name,
+                            source: source,
                             isPreview: article.isTruncated,
                             onPressed: () => _openOriginal(context),
                           ),
@@ -181,20 +192,53 @@ class _MarkReadOnOpenState extends ConsumerState<_MarkReadOnOpen> {
   Widget build(BuildContext context) => widget.child;
 }
 
+/// "🔓 Free" / "🔒 Subscription" in a tonal pill beside the paper's name.
+class _AccessBadge extends StatelessWidget {
+  const _AccessBadge({required this.source});
+
+  final NewsSource source;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final foreground = source.isPaid
+        ? colors.onTertiaryContainer
+        : colors.onSecondaryContainer;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: source.isPaid
+            ? colors.tertiaryContainer
+            : colors.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: AccessLabel(
+          source: source,
+          style: theme.textTheme.labelMedium?.copyWith(color: foreground),
+        ),
+      ),
+    );
+  }
+}
+
 class _ContinueReading extends StatelessWidget {
   const _ContinueReading({
-    required this.sourceName,
+    required this.source,
     required this.isPreview,
     required this.onPressed,
   });
 
-  final String sourceName;
+  final NewsSource source;
   final bool isPreview;
   final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sourceName = source.name;
 
     if (!isPreview) {
       return TextButton.icon(
@@ -213,8 +257,10 @@ class _ContinueReading extends StatelessWidget {
             Text('This is a preview', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
-              'The full story is on $sourceName. Some papers ask '
-              'for a subscription.',
+              source.isPaid
+                  ? 'The full story is for $sourceName subscribers. You can '
+                      'sign in or subscribe on their site.'
+                  : 'The full story is free to read on $sourceName.',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),

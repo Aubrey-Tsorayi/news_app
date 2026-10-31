@@ -165,7 +165,10 @@ class _SourceChips extends ConsumerWidget {
       itemBuilder: (context, index) {
         if (index == 0) return const _UnreadOnlyChip();
         final source = sources[index - 1];
+        final isPaid = source?.isPaid ?? false;
         return ChoiceChip(
+          avatar: isPaid ? const Icon(Icons.lock_outline, size: 16) : null,
+          tooltip: isPaid ? 'Full stories need a subscription' : null,
           label: Text(source?.name ?? 'All papers'),
           selected: selected == source?.id,
           onSelected: (_) => notifier.select(source?.id),
